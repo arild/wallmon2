@@ -7,76 +7,69 @@ import (
     "fmt"
     "os/signal"
     "./system"
+    "github.com/golang/protobuf/proto"
+    "log"
 )
-
-type DataItem struct {
-    cpu float32
-}
 
 func main() {
 
-    pids := system.GetAllPids()
-    for elem, _ := range pids {
-        fmt.Println(elem)
-    }
-    return
+    system.GetAllPids()
 
-    ch := make(chan *DataItem)
+    ch := make(chan []byte)
 
     go sampleData(ch)
     go sendData(ch)
 
+    handleCtrlC()
+}
+
+func handleCtrlC() {
     c := make(chan os.Signal, 1)
     signal.Notify(c, os.Interrupt)
     for sig := range c {
         println("Terminate program", sig)
         os.Exit(0)
     }
-
-
 }
 
-func sampleData(ch chan *DataItem) {
+func sampleData(ch chan []byte) {
 
-    tick := time.Tick(1000 * time.Millisecond)
+    tick := time.Tick(2000 * time.Millisecond)
     for now := range tick {
         fmt.Printf("%v\n", now)
-        //monitor := new(Monitor)
-        //println(monitor.getCpu())
-        dataItem := new(DataItem)
-        dataItem.cpu = 50.2
 
-        ch <- dataItem
+        metrics := &Metrics{
+            Pid: proto.Uint32(1),
+            Cpu:  proto.Float32(0.32),
+        }
+
+        data, err := proto.Marshal(metrics)
+        if err != nil {
+            log.Fatal("marshaling error: ", err)
+        }
+
+        fmt.Printf("Forwording sampled data")
+        ch <- data
     }
     println("test")
 }
 
-func sendData(ch chan *DataItem) {
-    
-    for item := range ch {
-        println(item.cpu)
-    }
-
+func sendData(ch chan []byte) {
     conn, err := net.Dial("tcp", "localhost:3333")
     if err != nil {
-        // handle error
+        log.Fatal("Failed opening socket")
     }
 
-    _, err = conn.Write([]byte("Hello"))
-    if err != nil {
-        println("Write to server failed:", err.Error())
-        os.Exit(1)
+    for item := range ch {
+        fmt.Printf("Item on channel, length=%d", len(item))
+
+        _, err = conn.Write(item)
+        if err != nil {
+            println("Write to server failed:", err.Error())
+            os.Exit(1)
+        }
+
     }
-
-    reply := make([]byte, 1024)
-
-    _, err = conn.Read(reply)
-    if err != nil {
-        println("Write to server failed:", err.Error())
-        os.Exit(1)
-    }
-
-    println("reply from server=", string(reply))
 
     conn.Close()
 

@@ -1,0 +1,11 @@
+package protocol;
+
+message Metrics {
+    required uint32 pid = 1;
+    required float  cpu = 2;
+}
+
+message MetricsMessage
+{
+    repeated Metrics metricsmessage = 1;
+}

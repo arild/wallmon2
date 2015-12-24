@@ -1,6 +1,0 @@
-package main;
-
-message Metrics {
-    required uint32 pid = 1;
-    required float  cpu = 2;
-}

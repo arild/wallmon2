@@ -22,7 +22,7 @@ func main() {
 	http.HandleFunc("/echo", func(w http.ResponseWriter, r *http.Request) {
 		echoHandler(w, r, metricChan)
 	})
-	http.Handle("/", http.FileServer(http.Dir("./src/web")))
+	http.Handle("/", http.FileServer(http.Dir("./web")))
 	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
 		panic("Error: " + err.Error())
@@ -33,6 +33,9 @@ func echoHandler(w http.ResponseWriter, r *http.Request, metricsChan chan []byte
 	var upgrader = websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
+		CheckOrigin: func(r *http.Request) bool {
+			return true
+		},
 	}
 
 	log.Println("echo handler")
